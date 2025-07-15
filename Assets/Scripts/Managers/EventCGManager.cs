@@ -2,12 +2,12 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-public class EventCGManager : MonoBehaviour
+public class EventCGManager : ManagerBase
 {
     public Image cgImage;
     public GameObject cgPanel;
 
-    public void Initialize()
+    public override void ManagedInitialize()
     {
         if (cgPanel != null) cgPanel.SetActive(false);
         Debug.Log("EventCGManager initialized.");

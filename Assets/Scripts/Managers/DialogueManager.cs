@@ -3,14 +3,14 @@ using UnityEngine;
 using System.Collections.Generic;
 using System;
 
-public class DialogueManager : MonoBehaviour
+public class DialogueManager : ManagerBase
 {
     public event Action<DialogueData> OnDialogueStart;
     public event Action OnDialogueEnd;
 
     private List<DialogueData> allDialogues;
 
-    public void Initialize()
+    public override void ManagedInitialize()
     {
         LoadAllDialogues();
         Debug.Log("DialogueManager initialized.");

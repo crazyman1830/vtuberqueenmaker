@@ -1,13 +1,13 @@
 
 using UnityEngine;
 
-public class SoundManager : MonoBehaviour
+public class SoundManager : ManagerBase
 {
     public AudioSource bgmSource;
     public AudioSource sfxSource;
     public AudioSource voiceSource;
 
-    public void Initialize()
+    public override void ManagedInitialize()
     {
         if (bgmSource == null)
         {

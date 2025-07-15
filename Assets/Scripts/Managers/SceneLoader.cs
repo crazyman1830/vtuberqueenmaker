@@ -2,11 +2,11 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-public class SceneLoader : MonoBehaviour
+public class SceneLoader : ManagerBase
 {
     private string currentSceneName;
 
-    public void Initialize()
+    public override void ManagedInitialize()
     {
         Debug.Log("SceneLoader initialized.");
     }

@@ -1,12 +1,12 @@
 
 using UnityEngine;
 
-public class BackgroundManager : MonoBehaviour
+public class BackgroundManager : ManagerBase
 {
     public SpriteRenderer backgroundRenderer;
     public Sprite[] backgroundSprites; // Unity 에디터에서 ActivityType 순서대로 스프라이트 할당
 
-    public void Initialize()
+    public override void ManagedInitialize()
     {
         if (backgroundRenderer == null)
         {

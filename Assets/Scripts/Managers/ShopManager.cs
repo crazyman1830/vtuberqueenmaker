@@ -2,11 +2,11 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-public class ShopManager : MonoBehaviour
+public class ShopManager : ManagerBase
 {
     public List<ShopItemData> availableItems;
 
-    public void Initialize()
+    public override void ManagedInitialize()
     {
         LoadShopItems();
         Debug.Log("ShopManager initialized.");
@@ -28,11 +28,14 @@ public class ShopManager : MonoBehaviour
 
     public bool BuyItem(ShopItemData item)
     {
-        PlayerData playerData = GameManager.Instance.CharacterManager.CurrentPlayerData;
+        var characterManager = GameManager.Instance.GetManager<CharacterManager>();
+        if (characterManager == null || characterManager.CurrentPlayerData == null) return false;
+
+        PlayerData playerData = characterManager.CurrentPlayerData;
 
         if (playerData.money >= item.price)
         {
-            GameManager.Instance.CharacterManager.AddMoney(-item.price);
+            characterManager.AddMoney(-item.price);
             ApplyItemEffects(item);
             Debug.Log($"Purchased {item.itemName} for {item.price} money.");
             return true;
@@ -46,8 +49,10 @@ public class ShopManager : MonoBehaviour
 
     void ApplyItemEffects(ShopItemData item)
     {
-        PlayerData playerData = GameManager.Instance.CharacterManager.CurrentPlayerData;
-        if (playerData == null) return;
+        var characterManager = GameManager.Instance.GetManager<CharacterManager>();
+        if (characterManager == null || characterManager.CurrentPlayerData == null) return;
+
+        PlayerData playerData = characterManager.CurrentPlayerData;
 
         foreach (var effect in item.effects)
         {
@@ -65,5 +70,7 @@ public class ShopManager : MonoBehaviour
                 // 다른 파라미터들에 대한 처리 추가
             }
         }
+        // 아이템 효과 적용 후 데이터 변경 알림
+        GameEvents.OnPlayerDataUpdated?.Invoke(playerData);
     }
 }

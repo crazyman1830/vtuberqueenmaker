@@ -1,37 +1,52 @@
 
 using UnityEngine;
 
-public class CharacterManager : MonoBehaviour
+public class CharacterManager : ManagerBase
 {
     public PlayerData CurrentPlayerData { get; private set; }
     public PlayerCharacterVisuals playerVisuals; // 플레이어 캐릭터의 시각적 요소
 
-    public void Initialize()
+    public override void ManagedInitialize()
     {
         LoadPlayerData();
+        GameEvents.OnProcessSchedule += ProcessSchedule;
         Debug.Log($"CharacterManager initialized for {CurrentPlayerData.vtuberName}.");
+    }
+
+    void OnDestroy()
+    {
+        GameEvents.OnProcessSchedule -= ProcessSchedule;
     }
 
     public void LoadPlayerData()
     {
         CurrentPlayerData = new PlayerData("New VTuber");
+        NotifyPlayerDataUpdate();
     }
 
     public void SetPlayerData(PlayerData data)
     {
         CurrentPlayerData = data;
+        NotifyPlayerDataUpdate();
+    }
+
+    private void NotifyPlayerDataUpdate()
+    {
+        GameEvents.OnPlayerDataUpdated?.Invoke(CurrentPlayerData);
     }
 
     public void AddSubscribers(int amount)
     {
         if (CurrentPlayerData == null) return;
         CurrentPlayerData.subscribers += amount;
+        NotifyPlayerDataUpdate();
     }
 
     public void AddMoney(long amount)
     {
         if (CurrentPlayerData == null) return;
         CurrentPlayerData.money += amount;
+        NotifyPlayerDataUpdate();
     }
 
     public void ApplyStress(int amount)
@@ -54,6 +69,32 @@ public class CharacterManager : MonoBehaviour
                 playerVisuals.SetExpression("Normal");
             }
         }
+        NotifyPlayerDataUpdate();
+    }
+
+    private void ProcessSchedule(int dayIndex)
+    {
+        ScheduleEntry entry = GameManager.Instance.GetManager<ScheduleManager>().GetDailySchedule(dayIndex);
+
+        switch (entry.activityType)
+        {
+            case ActivityType.BroadcastGame: HandleGameBroadcast(entry.durationHours); break;
+            case ActivityType.BroadcastChat: HandleChatBroadcast(entry.durationHours); break;
+            case ActivityType.BroadcastSong: HandleSongBroadcast(entry.durationHours); break;
+            case ActivityType.BroadcastASMR: HandleASMRBroadcast(entry.durationHours); break;
+            case ActivityType.VocalTraining: HandleVocalTraining(entry.durationHours); break;
+            case ActivityType.DanceLesson: HandleDanceLesson(entry.durationHours); break;
+            case ActivityType.SpeechClass: HandleSpeechClass(entry.durationHours); break;
+            case ActivityType.GamePractice: HandleGamePractice(entry.durationHours); break;
+            case ActivityType.Rest: HandleRest(entry.durationHours); break;
+            case ActivityType.ProduceVideo: HandleProduceVideo(entry.durationHours); break;
+            case ActivityType.RecordCoverSong: HandleRecordCoverSong(entry.durationHours); break;
+            case ActivityType.ManageSNS: HandleManageSNS(entry.durationHours); break;
+            case ActivityType.Collaboration: HandleCollaboration(entry.durationHours); break;
+            case ActivityType.Event: HandleOfflineEvent(entry.durationHours); break;
+            case ActivityType.GoodsProduction: HandleGoodsProduction(entry.durationHours); break;
+        }
+        NotifyPlayerDataUpdate(); // 스케줄 처리 후 데이터 변경 알림
     }
 
     public void HandleGameBroadcast(int duration)

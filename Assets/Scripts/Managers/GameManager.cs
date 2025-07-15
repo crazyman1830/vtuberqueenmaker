@@ -4,19 +4,20 @@ public class GameManager : MonoBehaviour
 {
     public static GameManager Instance { get; private set; }
 
-    public TimeManager TimeManager { get; private set; }
-    public ScheduleManager ScheduleManager { get; private set; }
-    public CharacterManager CharacterManager { get; private set; }
-    public UIGameManager UIGameManager { get; private set; }
-    public EventManager EventManager { get; private set; }
-    public SaveManager SaveManager { get; private set; }
-    public ShopManager ShopManager { get; private set; }
-    public EndingManager EndingManager { get; private set; }
-    public BackgroundManager BackgroundManager { get; private set; }
-    public EventCGManager EventCGManager { get; private set; }
-    public SoundManager SoundManager { get; private set; }
-    public DialogueManager DialogueManager { get; private set; }
-    public SceneLoader SceneLoader { get; private set; }
+    private List<ManagerBase> managers = new List<ManagerBase>();
+
+    // 특정 매니저에 접근해야 할 경우를 위한 제네릭 메서드
+    public T GetManager<T>() where T : ManagerBase
+    {
+        foreach (var manager in managers)
+        {
+            if (manager is T typedManager)
+            {
+                return typedManager;
+            }
+        }
+        return null;
+    }
 
     void Awake()
     {
@@ -34,33 +35,26 @@ public class GameManager : MonoBehaviour
 
     private void InitializeManagers()
     {
-        TimeManager = gameObject.AddComponent<TimeManager>();
-        ScheduleManager = gameObject.AddComponent<ScheduleManager>();
-        CharacterManager = gameObject.AddComponent<CharacterManager>();
-        UIGameManager = gameObject.AddComponent<UIGameManager>();
-        EventManager = gameObject.AddComponent<EventManager>();
-        SaveManager = gameObject.AddComponent<SaveManager>();
-        ShopManager = gameObject.AddComponent<ShopManager>();
-        EndingManager = gameObject.AddComponent<EndingManager>();
-        BackgroundManager = gameObject.AddComponent<BackgroundManager>();
-        EventCGManager = gameObject.AddComponent<EventCGManager>();
-        SoundManager = gameObject.AddComponent<SoundManager>();
-        DialogueManager = gameObject.AddComponent<DialogueManager>();
-        SceneLoader = gameObject.AddComponent<SceneLoader>();
+        // 필요한 매니저들을 순서대로 추가
+        managers.Add(gameObject.AddComponent<TimeManager>());
+        managers.Add(gameObject.AddComponent<CharacterManager>());
+        managers.Add(gameObject.AddComponent<ScheduleManager>());
+        managers.Add(gameObject.AddComponent<EventManager>());
+        managers.Add(gameObject.AddComponent<DialogueManager>());
+        managers.Add(gameObject.AddComponent<SoundManager>());
+        managers.Add(gameObject.AddComponent<SaveManager>());
+        managers.Add(gameObject.AddComponent<SceneLoader>());
+        managers.Add(gameObject.AddComponent<ShopManager>());
+        managers.Add(gameObject.AddComponent<EndingManager>());
+        managers.Add(gameObject.AddComponent<BackgroundManager>());
+        managers.Add(gameObject.AddComponent<EventCGManager>());
+        managers.Add(gameObject.AddComponent<UIGameManager>()); // UI 매니저는 다른 매니저들의 이벤트에 의존하므로 마지막에 초기화
 
-        TimeManager.Initialize();
-        ScheduleManager.Initialize();
-        CharacterManager.Initialize();
-        UIGameManager.Initialize();
-        EventManager.Initialize();
-        SaveManager.Initialize();
-        ShopManager.Initialize();
-        EndingManager.Initialize();
-        BackgroundManager.Initialize();
-        EventCGManager.Initialize();
-        SoundManager.Initialize();
-        DialogueManager.Initialize();
-        SceneLoader.Initialize();
+        // 모든 매니저 초기화
+        foreach (var manager in managers)
+        {
+            manager.ManagedInitialize();
+        }
 
         Debug.Log("All managers initialized.");
     }
@@ -68,18 +62,16 @@ public class GameManager : MonoBehaviour
     public void StartNewGame()
     {
         // 새 게임 시작 시 데이터 초기화
-        CharacterManager.LoadPlayerData(); // 기본값으로 플레이어 데이터 생성
-        TimeManager.ResetTime();
-        ScheduleManager.Initialize();
+        GetManager<CharacterManager>().LoadPlayerData(); // 기본값으로 플레이어 데이터 생성
+        GetManager<TimeManager>().ResetTime();
+        GetManager<ScheduleManager>().Initialize(); // TODO: 이 부분도 ManagedInitialize로 통합 고려
 
-        SceneLoader.LoadScene("Game");
+        GetManager<SceneLoader>().LoadScene("Game");
     }
 
     void Update()
     {
-        if (TimeManager != null)
-        {
-            TimeManager.Tick(Time.deltaTime);
-        }
+        // TimeManager의 Tick은 계속 호출되어야 함
+        GetManager<TimeManager>()?.Tick(Time.deltaTime);
     }
 }

@@ -35,9 +35,27 @@ public class ScheduleEntry
     }
 }
 
-public class ScheduleManager : MonoBehaviour
+public class ScheduleManager : ManagerBase
 {
     public List<ScheduleEntry> weeklySchedule;
+
+    public override void ManagedInitialize()
+    {
+        Initialize();
+        GameEvents.OnDateChanged += OnDateChanged;
+    }
+
+    void OnDestroy()
+    {
+        GameEvents.OnDateChanged -= OnDateChanged;
+    }
+
+    private void OnDateChanged(int day, int week, int month, int year)
+    {
+        // 날짜가 변경되면 해당 요일의 스케줄 처리 이벤트를 발생시킨다.
+        int dayOfWeek = (int)GameManager.Instance.GetManager<TimeManager>().CurrentDate.DayOfWeek; // 0: Sunday, 1: Monday...
+        ProcessDailySchedule(dayOfWeek);
+    }
 
     public void Initialize()
     {
@@ -77,54 +95,7 @@ public class ScheduleManager : MonoBehaviour
         ScheduleEntry entry = GetDailySchedule(dayIndex);
         Debug.Log($"Processing schedule for Day {dayIndex}: {entry.activityType} for {entry.durationHours} hours.");
 
-        switch (entry.activityType)
-        {
-            case ActivityType.BroadcastGame:
-                GameManager.Instance.CharacterManager.HandleGameBroadcast(entry.durationHours);
-                break;
-            case ActivityType.BroadcastChat:
-                GameManager.Instance.CharacterManager.HandleChatBroadcast(entry.durationHours);
-                break;
-            case ActivityType.BroadcastSong:
-                GameManager.Instance.CharacterManager.HandleSongBroadcast(entry.durationHours);
-                break;
-            case ActivityType.BroadcastASMR:
-                GameManager.Instance.CharacterManager.HandleASMRBroadcast(entry.durationHours);
-                break;
-            case ActivityType.VocalTraining:
-                GameManager.Instance.CharacterManager.HandleVocalTraining(entry.durationHours);
-                break;
-            case ActivityType.DanceLesson:
-                GameManager.Instance.CharacterManager.HandleDanceLesson(entry.durationHours);
-                break;
-            case ActivityType.SpeechClass:
-                GameManager.Instance.CharacterManager.HandleSpeechClass(entry.durationHours);
-                break;
-            case ActivityType.GamePractice:
-                GameManager.Instance.CharacterManager.HandleGamePractice(entry.durationHours);
-                break;
-            case ActivityType.Rest:
-                GameManager.Instance.CharacterManager.HandleRest(entry.durationHours);
-                break;
-            case ActivityType.ProduceVideo:
-                GameManager.Instance.CharacterManager.HandleProduceVideo(entry.durationHours);
-                break;
-            case ActivityType.RecordCoverSong:
-                GameManager.Instance.CharacterManager.HandleRecordCoverSong(entry.durationHours);
-                break;
-            case ActivityType.ManageSNS:
-                GameManager.Instance.CharacterManager.HandleManageSNS(entry.durationHours);
-                break;
-            case ActivityType.Collaboration:
-                GameManager.Instance.CharacterManager.HandleCollaboration(entry.durationHours);
-                break;
-            case ActivityType.Event:
-                GameManager.Instance.CharacterManager.HandleOfflineEvent(entry.durationHours);
-                break;
-            case ActivityType.GoodsProduction:
-                GameManager.Instance.CharacterManager.HandleGoodsProduction(entry.durationHours);
-                break;
-            // 다른 활동들에 대한 처리 추가
-        }
+        // 직접 CharacterManager를 호출하는 대신, 이벤트를 통해 스케줄 처리를 요청
+        GameEvents.OnProcessSchedule?.Invoke(dayIndex);
     }
 }
