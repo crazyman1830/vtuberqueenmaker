@@ -2,25 +2,34 @@
 using UnityEngine;
 using System.IO;
 
-public class SaveManager : MonoBehaviour
+public class SaveManager : ManagerBase
 {
     private string saveFilePath;
 
-    public void Initialize()
+    public override void ManagedInitialize()
     {
         saveFilePath = Path.Combine(Application.persistentDataPath, "savegame.json");
+        GameEvents.OnSaveGame += SaveGame;
         Debug.Log($"Save file path: {saveFilePath}");
+    }
+
+    void OnDestroy()
+    {
+        GameEvents.OnSaveGame -= SaveGame;
     }
 
     public void SaveGame()
     {
+        var timeManager = GameManager.Instance.GetManager<TimeManager>();
+        var characterManager = GameManager.Instance.GetManager<CharacterManager>();
+
         SaveData saveData = new SaveData
         {
-            playerData = GameManager.Instance.CharacterManager.CurrentPlayerData,
-            currentDay = GameManager.Instance.TimeManager.CurrentDay,
-            currentWeek = GameManager.Instance.TimeManager.CurrentWeek,
-            currentMonth = GameManager.Instance.TimeManager.CurrentMonth,
-            currentYear = GameManager.Instance.TimeManager.CurrentYear
+            playerData = characterManager.CurrentPlayerData,
+            currentDay = timeManager.CurrentDay,
+            currentWeek = timeManager.CurrentWeek,
+            currentMonth = timeManager.CurrentMonth,
+            currentYear = timeManager.CurrentYear
         };
 
         string json = JsonUtility.ToJson(saveData, true);
@@ -35,8 +44,11 @@ public class SaveManager : MonoBehaviour
             string json = File.ReadAllText(saveFilePath);
             SaveData saveData = JsonUtility.FromJson<SaveData>(json);
 
-            GameManager.Instance.CharacterManager.SetPlayerData(saveData.playerData);
-            GameManager.Instance.TimeManager.SetTime(new System.DateTime(saveData.currentYear, saveData.currentMonth, saveData.currentDay));
+            var characterManager = GameManager.Instance.GetManager<CharacterManager>();
+            var timeManager = GameManager.Instance.GetManager<TimeManager>();
+
+            characterManager.SetPlayerData(saveData.playerData);
+            timeManager.SetTime(new System.DateTime(saveData.currentYear, saveData.currentMonth, saveData.currentDay));
 
             Debug.Log("Game loaded successfully.");
             return true;

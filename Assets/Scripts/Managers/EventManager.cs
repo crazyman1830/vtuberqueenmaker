@@ -2,27 +2,24 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-public class EventManager : MonoBehaviour
+public class EventManager : ManagerBase
 {
     public List<EventData> allEvents;
     public List<RivalData> allRivals;
     public List<StaffData> allStaff;
 
-    public void Initialize()
+    public override void ManagedInitialize()
     {
         LoadAllEvents();
         LoadAllRivals();
         LoadAllStaff();
-        GameManager.Instance.TimeManager.OnDayChanged += CheckAndTriggerEvents;
+        GameEvents.OnDateChanged += CheckAndTriggerEvents;
         Debug.Log("EventManager initialized.");
     }
 
     void OnDestroy()
     {
-        if (GameManager.Instance != null && GameManager.Instance.TimeManager != null)
-        {
-            GameManager.Instance.TimeManager.OnDayChanged -= CheckAndTriggerEvents;
-        }
+        GameEvents.OnDateChanged -= CheckAndTriggerEvents;
     }
 
     void LoadAllEvents()
@@ -78,6 +75,9 @@ public class EventManager : MonoBehaviour
 
     void CheckAndTriggerEvents(int day, int week, int month, int year)
     {
+        var characterManager = GameManager.Instance.GetManager<CharacterManager>();
+        if (characterManager == null || characterManager.CurrentPlayerData == null) return;
+
         // 매일 일정 확률로 랜덤 이벤트 발생
         if (UnityEngine.Random.Range(0, 100) < 10) // 10% 확률
         {
@@ -98,8 +98,8 @@ public class EventManager : MonoBehaviour
         // 라이벌 이벤트 체크 (예: 플레이어의 구독자 수가 라이벌의 80%에 도달하면 경쟁 이벤트 발생)
         foreach (var rival in allRivals)
         {
-            if (GameManager.Instance.CharacterManager.CurrentPlayerData.subscribers >= rival.subscribers * 0.8f &&
-                GameManager.Instance.CharacterManager.CurrentPlayerData.subscribers < rival.subscribers) // 라이벌에 근접했을 때
+            if (characterManager.CurrentPlayerData.subscribers >= rival.subscribers * 0.8f &&
+                characterManager.CurrentPlayerData.subscribers < rival.subscribers) // 라이벌에 근접했을 때
             {
                 if (UnityEngine.Random.Range(0, 100) < 5) // 5% 확률
                 {
@@ -109,7 +109,7 @@ public class EventManager : MonoBehaviour
         }
 
         // 스태프 이벤트 체크 (예: 스트레스가 높을 때 매니저가 조언)
-        if (GameManager.Instance.CharacterManager.CurrentPlayerData.stress >= 70)
+        if (characterManager.CurrentPlayerData.stress >= 70)
         {
             if (UnityEngine.Random.Range(0, 100) < 15) // 15% 확률
             {
@@ -140,27 +140,29 @@ public class EventManager : MonoBehaviour
 
     void TriggerRivalEvent(RivalData rival)
     {
+        var dialogueManager = GameManager.Instance.GetManager<DialogueManager>();
         // 라이벌 이벤트 생성 (예시)
         if (rival.rivalName == "미나토 아쿠아")
         {
-            GameManager.Instance.DialogueManager.StartDialogue("rival_aquas_challenge");
+            dialogueManager.StartDialogue("rival_aquas_challenge");
         }
         else if (rival.rivalName == "호시마치 스이세이")
         {
-            GameManager.Instance.DialogueManager.StartDialogue("rival_suiseis_check");
+            dialogueManager.StartDialogue("rival_suiseis_check");
         }
     }
 
     void TriggerStaffEvent(StaffData staff)
     {
+        var dialogueManager = GameManager.Instance.GetManager<DialogueManager>();
         // 스태프 이벤트 생성 (예시)
         if (staff.staffName == "김매니저")
         {
-            GameManager.Instance.DialogueManager.StartDialogue("manager_encouragement");
+            dialogueManager.StartDialogue("manager_encouragement");
         }
         else if (staff.staffName == "박코디")
         {
-            GameManager.Instance.DialogueManager.StartDialogue("coordinator_suggestion");
+            dialogueManager.StartDialogue("coordinator_suggestion");
         }
     }
 
@@ -168,12 +170,12 @@ public class EventManager : MonoBehaviour
     {
         Debug.Log($"Event Triggered: {eventData.eventName} - {eventData.eventDescription}");
 
-        GameManager.Instance.UIGameManager.ShowEventPopup(eventData);
+        GameManager.Instance.GetManager<UIGameManager>()?.ShowEventPopup(eventData);
 
         // 이벤트 CG 표시
         if (eventData.eventCG != null)
         {
-            GameManager.Instance.EventCGManager.ShowCG(eventData.eventCG);
+            GameManager.Instance.GetManager<EventCGManager>()?.ShowCG(eventData.eventCG);
         }
 
         // 이벤트 효과 적용
@@ -185,8 +187,10 @@ public class EventManager : MonoBehaviour
 
     void ApplyEventEffect(EventEffect effect)
     {
-        PlayerData playerData = GameManager.Instance.CharacterManager.CurrentPlayerData;
-        if (playerData == null) return;
+        var characterManager = GameManager.Instance.GetManager<CharacterManager>();
+        if (characterManager == null || characterManager.CurrentPlayerData == null) return;
+
+        PlayerData playerData = characterManager.CurrentPlayerData;
 
         // 리플렉션을 사용하거나, switch-case 구문으로 파라미터 직접 변경
         switch (effect.parameterName)
@@ -205,5 +209,7 @@ public class EventManager : MonoBehaviour
                 break;
             // 다른 파라미터들에 대한 처리 추가
         }
+        // 이벤트 효과 적용 후 데이터 변경 알림
+        GameEvents.OnPlayerDataUpdated?.Invoke(playerData);
     }
 }

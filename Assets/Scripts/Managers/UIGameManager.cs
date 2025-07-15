@@ -4,7 +4,7 @@ using UnityEngine.UI;
 using TMPro;
 using System.Collections.Generic;
 
-public class UIGameManager : MonoBehaviour
+public class UIGameManager : ManagerBase
 {
     [Header("Player Status UI")]
     public TextMeshProUGUI subscriberCountText;
@@ -55,7 +55,7 @@ public class UIGameManager : MonoBehaviour
 
     private int selectedDayIndex = -1;
 
-    public void Initialize()
+    public override void ManagedInitialize()
     {
         if (schedulePanel != null) schedulePanel.SetActive(false);
         if (activitySelectionPopup != null) activitySelectionPopup.SetActive(false);
@@ -69,7 +69,7 @@ public class UIGameManager : MonoBehaviour
             scheduleDays[i].Initialize(dayIndex, OnDaySelected);
         }
 
-        if (saveButton != null) saveButton.onClick.AddListener(GameManager.Instance.SaveManager.SaveGame);
+        if (saveButton != null) saveButton.onClick.AddListener(() => GameEvents.OnSaveGame?.Invoke());
 
         // 활동 선택 팝업의 버튼들에 리스너 추가
         for (int i = 0; i < activitySelectionButtons.Count; i++)
@@ -79,6 +79,7 @@ public class UIGameManager : MonoBehaviour
             activitySelectionButtons[i].onClick.AddListener(() => OnActivitySelected(activityType));
         }
 
+        // TODO: 다른 UI들도 Initialize()를 ManagedInitialize() 패턴으로 바꿀 수 있음
         if (eventPopupUI != null) eventPopupUI.Initialize();
         if (shopUI != null) shopUI.Initialize();
         if (endingUI != null) endingUI.Initialize();
@@ -88,44 +89,51 @@ public class UIGameManager : MonoBehaviour
         if (statusButton != null) statusButton.onClick.AddListener(() =>
         {
             ToggleStatusPanel(true);
-            UpdateDetailedPlayerStatsUI(GameManager.Instance.CharacterManager.CurrentPlayerData);
+            // CharacterManager의 데이터는 이벤트를 통해 항상 최신 상태이므로, 직접 가져와서 업데이트
+            UpdateDetailedPlayerStatsUI(GameManager.Instance.GetManager<CharacterManager>().CurrentPlayerData);
         });
 
-        GameManager.Instance.DialogueManager.OnDialogueStart += dialogueUI.ShowDialogue;
-        GameManager.Instance.DialogueManager.OnDialogueEnd += dialogueUI.HideDialogue;
+        // 이벤트 구독
+        GameEvents.OnPlayerDataUpdated += UpdatePlayerStatsUI;
+        GameEvents.OnPlayerDataUpdated += UpdateDetailedPlayerStatsUI;
+        GameEvents.OnDateChanged += OnDateChanged_UpdateUI;
+
+        // DialogueManager는 UIGameManager가 직접 참조할 필요 없이, DialogueUI가 스스로 이벤트를 구독/해제하도록 만드는 것이 더 좋음 (추가 개선사항)
+        GameManager.Instance.GetManager<DialogueManager>().OnDialogueStart += dialogueUI.ShowDialogue;
+        GameManager.Instance.GetManager<DialogueManager>().OnDialogueEnd += dialogueUI.HideDialogue;
 
         // 초기 스케줄 UI 업데이트
         UpdateWeeklyScheduleUI();
 
         Debug.Log("UIGameManager Initialized.");
 
-        GameManager.Instance.TimeManager.OnDayChanged += OnDayChanged_UpdateUI;
-
-        // 초기 UI 업데이트
-        UpdateDateTimeUI(GameManager.Instance.TimeManager.CurrentDate.ToShortDateString());
-        UpdatePlayerStatsUI(GameManager.Instance.CharacterManager.CurrentPlayerData);
-    }
-
-    private void OnDayChanged_UpdateUI(int day, int week, int month, int year)
-    {
-        UpdateDateTimeUI(GameManager.Instance.TimeManager.CurrentDate.ToShortDateString());
-        UpdatePlayerStatsUI(GameManager.Instance.CharacterManager.CurrentPlayerData);
+        // 초기 UI 업데이트 (캐릭터 데이터가 로드된 후 이벤트를 통해 자동으로 호출될 것임)
+        var timeManager = GameManager.Instance.GetManager<TimeManager>();
+        UpdateDateTimeUI(timeManager.CurrentDate.ToShortDateString());
     }
 
     void OnDestroy()
     {
+        // 이벤트 구독 해제
+        GameEvents.OnPlayerDataUpdated -= UpdatePlayerStatsUI;
+        GameEvents.OnPlayerDataUpdated -= UpdateDetailedPlayerStatsUI;
+        GameEvents.OnDateChanged -= OnDateChanged_UpdateUI;
+
         if (GameManager.Instance != null)
         {
-            if (GameManager.Instance.TimeManager != null)
+            var dialogueManager = GameManager.Instance.GetManager<DialogueManager>();
+            if (dialogueManager != null)
             {
-                GameManager.Instance.TimeManager.OnDayChanged -= OnDayChanged_UpdateUI;
-            }
-            if (GameManager.Instance.DialogueManager != null)
-            {
-                GameManager.Instance.DialogueManager.OnDialogueStart -= dialogueUI.ShowDialogue;
-                GameManager.Instance.DialogueManager.OnDialogueEnd -= dialogueUI.HideDialogue;
+                dialogueManager.OnDialogueStart -= dialogueUI.ShowDialogue;
+                dialogueManager.OnDialogueEnd -= dialogueUI.HideDialogue;
             }
         }
+    }
+
+    private void OnDateChanged_UpdateUI(int day, int week, int month, int year)
+    {
+        var timeManager = GameManager.Instance.GetManager<TimeManager>();
+        UpdateDateTimeUI(timeManager.CurrentDate.ToShortDateString());
     }
 
     void OnDaySelected(int dayIndex)
@@ -139,7 +147,7 @@ public class UIGameManager : MonoBehaviour
     {
         if (selectedDayIndex != -1)
         {
-            GameManager.Instance.ScheduleManager.SetDailySchedule(selectedDayIndex, activity, 8); // 8시간으로 고정
+            GameManager.Instance.GetManager<ScheduleManager>().SetDailySchedule(selectedDayIndex, activity, 8); // 8시간으로 고정
             scheduleDays[selectedDayIndex].UpdateActivity(activity);
             activitySelectionPopup.SetActive(false);
             selectedDayIndex = -1;
@@ -149,9 +157,10 @@ public class UIGameManager : MonoBehaviour
 
     public void UpdateWeeklyScheduleUI()
     {
+        var scheduleManager = GameManager.Instance.GetManager<ScheduleManager>();
         for (int i = 0; i < scheduleDays.Count; i++)
         {
-            ScheduleEntry entry = GameManager.Instance.ScheduleManager.GetDailySchedule(i);
+            ScheduleEntry entry = scheduleManager.GetDailySchedule(i);
             scheduleDays[i].UpdateActivity(entry.activityType);
         }
     }

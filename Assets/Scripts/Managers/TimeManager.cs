@@ -2,11 +2,8 @@
 using System;
 using UnityEngine;
 
-public class TimeManager : MonoBehaviour
+public class TimeManager : ManagerBase
 {
-    public event Action<int, int, int, int> OnDayChanged;
-    public event Action OnYearChanged;
-
     public DateTime CurrentDate { get; private set; }
 
     private float dayTimer;
@@ -17,7 +14,7 @@ public class TimeManager : MonoBehaviour
     public int CurrentMonth => CurrentDate.Month;
     public int CurrentYear => CurrentDate.Year;
 
-    public void Initialize()
+    public override void ManagedInitialize()
     {
         CurrentDate = new DateTime(2025, 1, 1); // 게임 시작 날짜
         secondsPerDay = 1.0f; // 테스트를 위해 1초로 설정
@@ -50,15 +47,10 @@ public class TimeManager : MonoBehaviour
 
     private void AdvanceDay()
     {
-        int oldYear = CurrentDate.Year;
         CurrentDate = CurrentDate.AddDays(1);
-        OnDayChanged?.Invoke(CurrentDay, CurrentWeek, CurrentMonth, CurrentYear);
+        GameEvents.OnDateChanged?.Invoke(CurrentDay, CurrentWeek, CurrentMonth, CurrentYear);
         Debug.Log($"A new day has begun: {CurrentDate.ToShortDateString()}");
 
-        if (CurrentDate.Year != oldYear)
-        {
-            OnYearChanged?.Invoke();
-            Debug.Log($"A new year has begun: {CurrentDate.Year}");
-        }
+        // 년도 변경 이벤트는 필요 시 GameEvents에 추가 가능
     }
 }

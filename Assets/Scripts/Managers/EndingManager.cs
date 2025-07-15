@@ -1,26 +1,34 @@
 using UnityEngine;
 using System;
 
-public class EndingManager : MonoBehaviour
+public class EndingManager : ManagerBase
 {
-    public void Initialize()
+    private int lastCheckedYear = -1;
+
+    public override void ManagedInitialize()
     {
-        GameManager.Instance.TimeManager.OnYearChanged += CheckEndingCondition;
+        GameEvents.OnDateChanged += OnDateChanged;
         Debug.Log("EndingManager initialized.");
     }
 
     void OnDestroy()
     {
-        if (GameManager.Instance != null && GameManager.Instance.TimeManager != null)
+        GameEvents.OnDateChanged -= OnDateChanged;
+    }
+
+    private void OnDateChanged(int day, int week, int month, int year)
+    {
+        if (year != lastCheckedYear)
         {
-            GameManager.Instance.TimeManager.OnYearChanged -= CheckEndingCondition;
+            lastCheckedYear = year;
+            CheckEndingCondition(year);
         }
     }
 
-    void CheckEndingCondition()
+    void CheckEndingCondition(int currentYear)
     {
         // 예시: 게임 시작 후 3년이 지나면 엔딩 체크
-        if (GameManager.Instance.TimeManager.CurrentYear >= 2028) // 2025년 시작 -> 2028년은 3년 후
+        if (currentYear >= 2028) // 2025년 시작 -> 2028년은 3년 후
         {
             TriggerEnding();
         }
@@ -28,7 +36,10 @@ public class EndingManager : MonoBehaviour
 
     void TriggerEnding()
     {
-        PlayerData playerData = GameManager.Instance.CharacterManager.CurrentPlayerData;
+        var characterManager = GameManager.Instance.GetManager<CharacterManager>();
+        if (characterManager == null || characterManager.CurrentPlayerData == null) return;
+
+        PlayerData playerData = characterManager.CurrentPlayerData;
         string endingTitle = "";
         string endingDescription = "";
 
@@ -58,7 +69,7 @@ public class EndingManager : MonoBehaviour
                             $"최종 인지도: {playerData.fame}\n" +
                             $"최종 자금: {playerData.money.ToString("N0")}원";
 
-        GameManager.Instance.UIGameManager.ShowEndingScreen(endingTitle, endingDescription, finalStats);
+        GameManager.Instance.GetManager<UIGameManager>()?.ShowEndingScreen(endingTitle, endingDescription, finalStats);
     }
 }
 
